@@ -1,0 +1,98 @@
+#!/bin/env python3
+
+from os import path, getenv, mkdir
+from glob import iglob
+import subprocess
+import shlex
+import uuid
+from argparse import ArgumentParser
+from email.parser import HeaderParser
+from email.header import decode_header
+
+UUID_NAMESPACE = uuid.UUID("becc6078-fd0c-4660-9a55-c25af9cef0d0")
+NOTIFY_TITLE = "New mail from {author}"
+NOTIFY_BODY = "{subject}"
+
+
+def get_new_mail(maildir, mailbox):
+    """ get list of mail messages for mailbox folders """
+    glob_iter = iglob(path.join(maildir, mailbox, 'new', '*'))
+    return {message for message in glob_iter}
+
+
+def get_decoded(msg, key, default='unknown'):
+    decoded_parts = []
+    parts = decode_header(msg.get(key, default))
+    for part in parts:
+        try:
+            if isinstance(part[0], bytes):
+                try:
+                    decoded_parts += part[0].decode(part[1])
+                except TypeError:
+                    decoded_parts += part[0].decode()
+            else:
+                decoded_parts += part[0]
+        except IndexError:
+            decoded_parts += "unknown"
+    return " ".join(decoded_parts)
+
+
+def main():
+    """ main logic """
+    parser = ArgumentParser()
+    parser.add_argument("-d", dest="maildir", metavar="MAILDIR",
+                        default="~/Mail", help="Specify maildir path")
+    parser.add_argument("-c", dest="command", metavar="COMMAND",
+                        help="Specify a command to be run before checking")
+    parser.add_argument("-b", dest="i3blocks", action="store_true",
+                        help="Output as i3blocks format")
+    parser.add_argument(dest="mailboxes", metavar="MAILBOX", nargs="*",
+                        default=["INBOX"], help="List mailboxes to check")
+    args = parser.parse_args()
+
+    xdg_cache_path = getenv("XDG_CACHE_HOME") or path.expanduser(path.join("~", ".cache"))
+    cache_dir = path.join(xdg_cache_path, "mailcheck")
+    if not path.exists(cache_dir):
+        mkdir(cache_dir)
+
+    count = 0
+    for mailbox in args.mailboxes:
+        cache_name = str(uuid.uuid5(UUID_NAMESPACE, args.maildir + mailbox))
+        cache_path = path.join(cache_dir, cache_name)
+        new_before = None
+        if path.isfile(cache_path):
+            with open(cache_path, "r") as fd:
+                new_before = set(fd.read().splitlines())
+        elif args.command:
+            new_before = get_new_mail(args.maildir, mailbox)
+
+        if args.command:
+            subprocess.call(shlex.split(args.command))
+
+        new_after = get_new_mail(args.maildir, mailbox)
+        count += len(new_after)
+
+        with open(cache_path, "w") as fd:
+            fd.write("\n".join(new_after))
+
+        if new_before is None:
+            continue
+
+        just_came = new_after - new_before
+        for message in just_came:
+            parser = HeaderParser()
+            with open(message) as fp:
+                msg = parser.parse(fp=fp)
+            subprocess.call(['notify-send',
+                             NOTIFY_TITLE.format(author=get_decoded(msg, 'from', 'unknown')),
+                             NOTIFY_BODY.format(subject=get_decoded(msg, 'subject', 'unknown'))])
+
+    print(count)
+
+    if args.i3blocks:
+        print(count)
+        print("#FFFFFF")
+
+
+if __name__ == "__main__":
+    main()
