@@ -1,0 +1,66 @@
+#!/bin/bash
+
+die() {
+    echo "$@"
+    echo "Usage: $0 [next|prev] OUTPUT"
+    exit 1
+}
+
+switch_direction=$1
+output=$2
+
+urgent_color="#aa0000"
+focus_color="#444444"
+delimiter=
+
+[ -z "$switch_direction" -o -z "$output" ] && {
+    die Output not specified
+}
+
+first=
+prev=
+active=
+next=
+last=
+
+workspaces=( $(i3-msg -t get_workspaces | jq -r '.[] | select(.output == "DP-0") | "\(.name),\(.focused)"') )
+for workspace in "${workspaces[@]}"; do
+    name=$(cut -d, -f1 <<< "$workspace")
+    focus=$(cut -d, -f2 <<< "$workspace")
+    if [ -z "$first" ]; then
+        first=$name
+    fi
+
+    if [ -z "$active" -a "$focus" = "false" ]; then
+        prev=$name
+    fi
+
+    if [ "$focus" = "true" ]; then
+        active=$name
+    fi
+
+    if [ "$focus" != "true" -a -z "$next" -a -n "$active" ]; then
+        next=$name
+    fi
+done
+last=$name
+
+if [ -z "$next" ]; then
+    next=$first
+fi
+
+if [ -z "$prev" ]; then
+    prev="$last"
+fi
+
+switch_to=
+if [ "$switch_direction" = "next" ]; then
+    switch_to=$next
+elif [ "$switch_direction" = "prev" ]; then
+    switch_to=$prev
+fi
+
+if [ -z "$switch_to" ]; then
+    die Couldn\'t deduce a wp to switch to
+fi
+i3-msg workspace $switch_to | jq -r '.[].success'

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+die() {
+    echo "$@"
+    echo "Usage: $0 OUTPUT"
+    exit 1
+}
+
+output=$1
+
+urgent_color="#aa0000"
+focus_color="#444444"
+delimiter=
+
+[ -z "$output" ] && {
+    die Output not specified
+}
+
+echo -n ""
+i3-msg -t get_workspaces | jq -r '.[] | select(.output == "DP-0") | "\(.name) \(.focused) \(.urgent)"' | while read name focus urgent; do
+    if $focus; then
+        echo -n "<span background='${focus_color}' > $name </span>"
+    elif $urgent; then
+        echo -n "<span background='${urgent_color}' > $name </span>"
+    else
+        echo -n " $name "
+    fi
+    echo -n $delimiter
+done
+echo -n ""
