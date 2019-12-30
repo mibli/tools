@@ -27,13 +27,13 @@ def get_decoded(msg, key, default='unknown'):
         try:
             if isinstance(part[0], bytes):
                 try:
-                    decoded_parts += part[0].decode(part[1])
+                    decoded_parts.append(part[0].decode(part[1]))
                 except TypeError:
-                    decoded_parts += part[0].decode()
+                    decoded_parts.append(part[0].decode())
             else:
-                decoded_parts += part[0]
+                decoded_parts.append(part[0])
         except IndexError:
-            decoded_parts += "unknown"
+            decoded_parts.append("unknown")
     return " ".join(decoded_parts)
 
 
