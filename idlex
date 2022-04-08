@@ -1,0 +1,61 @@
+#!/bin/bash
+
+die() {
+    echo "$@"
+    exit 1
+}
+
+print_help() {
+  cat <<EOL
+Usage: $0 [-h] [-t <time-in-ms>] [-e <command>|-x <command>]...
+
+Runs as a simple daemon and executes commands when user is idle
+or respectively when he stops being idle.
+
+Multiple entry and exit commands should work.
+
+Options:
+    -e "<command>" specify an idle state entry command
+    -x "<command>" specify an idle state exit command
+    -i <sleep time> specify how often to check for idle (default:10s)
+    -t <time in ms> specify how long the user has to be idle (default:5s)
+    -h print help"
+EOL
+  exit 0
+}
+
+enter_commands=("echo entering idle")
+exit_commands=("echo exiting idle")
+idletime=$((5*60*1000))
+interval=10s
+
+while getopts "i:e:x:t:h?" opt; do
+  case $opt in
+    e) enter_commands+=("$OPTARG") ;;
+    x) exit_commads+=("$OPTARG") ;;
+    t) idletime="$OPTARG" ;;
+    i) interval="$OPTARG" ;;
+    h) print_help ;;
+    ?) break ;;
+  esac
+done
+
+which xprintidle &>/dev/null || die "Failed to find xprintidle utility, cannot proceed."
+
+idle=false
+
+while sleep "$interval"; do
+  if [ "$(xprintidle)" -ge "$idletime" ]; then
+    if [ "$idle" = false ]; then
+      idle=true
+      for command in "${enter_commands[@]}"; do
+        eval "$command"
+      done
+    fi
+  elif [ "$idle" = true ]; then
+    idle=false
+    for command in "${exit_commands[@]}"; do
+      eval "$command"
+    done
+  fi
+done

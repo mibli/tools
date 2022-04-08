@@ -28,6 +28,15 @@ Example usage:
 
     findlibs badlib.so badlibs/ /usr/lib/ /usr/lib/Qt5/
 
+### Idle Executor (idlex)
+
+This is a bash script for running commands after some x input idle time. Personally I've used it
+mostly for reporting worked time on a project.
+
+Example usage:
+
+    idlex -e "notify-send idle detected" -x "notify-send idle exited" -i 10s -t $((1 * 60 * 1000))
+
 ### Mailcheck
 
 A script to compare the count of mail in maildir before (cached, or running a command)
