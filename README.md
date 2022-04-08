@@ -18,6 +18,23 @@ Example usage:
 
     abuild  # run when in a project folder
 
+### Compress Path (compath)
+
+Compresses path mainly for prompt use, addressing the problem of ugly wrapping, or lengthy prompts.
+I don't think it has much use outside of it, but feel free to let me know if You do. It should be
+compatible with paths with spaces and unicodes.
+
+Example usage:
+
+    pwd | compath
+
+Possible future features:
+
+* full name of last element
+* vowel removal
+* preserving the trailing 's' (indicating multiple)
+* tests
+
 ### FindLibs
 
 The purpose of this script is to automate finding dependencies of libraries, that are incorrectly
