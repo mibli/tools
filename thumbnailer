@@ -1,0 +1,51 @@
+#!/bin/bash
+
+min() { [ "$1" -lt "$2" ] && echo "$1" || echo "$2"; }
+
+extension() { basename "$1" | sed -e 's/^.*\.\([^\.]*\)$/\L\1/'; }
+cache_path() { echo "${CACHE}$(realpath "$1")" | sed 's/\(.png\)\?$/.png/'; }
+
+match_vid_ext() { extension "$1" | grep -qxE "avi|mp4|wmv|dat|3gp|ogv|mkv|mpg|mpeg|vob|fl[icv]|m2v|mov|webm|ts|mts|m4v|r[am]|qt|divx"; }
+make_vid_cache() {
+  cached="$(cache_path "$1")"
+  [ -f "$cached" ] && return
+  mkdir -p "$(dirname "$cached")"
+  ffmpegthumbnailer -i "$1" -o "$cached"
+}
+
+match_img_ext() { extension "$1" | grep -qxE "bmp|jpg|jpeg|png|xpm|webp|gif"; }
+make_img_cache() {
+  cached="$(cache_path "$1")"
+  [ -f "$cached" ] && return
+  mkdir -p "$(dirname "$cached")"
+  convert "$1[0]" -resize "${MAX_W}x${MAX_H}>" "$cached"
+}
+
+gen_thumb() {
+  if match_vid_ext "$1"; then
+    make_vid_cache "$1"
+  elif match_img_ext "$1"; then
+    make_img_cache "$1"
+  fi
+}
+
+CACHE="$HOME/.cache/thumbs"
+MAX_W=400
+MAX_H=400
+
+if ! ( match_vid_ext "$1" || match_img_ext "$1" ); then
+  echo "Extension not supported"; exit 1
+fi
+
+while [ "${1:0:1}" = "-" ]; do
+  case "${1:1}" in
+    path) cache_path "$2"; exit 0 ;;
+    *) echo "Option not supported"; exit 1 ;;
+  esac
+  shift
+done
+
+while [ -n "$1" ]; do
+  gen_thumb "$1" && cache_path "$1"
+  shift
+done

@@ -86,6 +86,20 @@ Example usage:
     recscn -w  # record window - careful! It doesn't follow window
     recscn -c  # record selection
 
+### Thumbnailer
+
+Generates thumbnails and returns paths to the thumbnails. Matches extensions for videos and
+populates thumbnails under specified directory. Currently only customizable by editing the file.
+Thumbnails are only created if they haven't been generated yet.
+
+Doesn't have help flag!
+
+Example usage:
+
+    $ thumbnailer "/src/images/weird catalogue/1352345lk3j132.jpg" "/other/video.mp4"
+    /home/user/.cache/thumbs/src/images/weird catalogue/1352345lk3j132.jpg
+    /home/user/.cache/thumbs/other/video.mp4
+
 ### Worthy mentions
 
 * datestamp - Produces a simple date stamp in predefined format.
