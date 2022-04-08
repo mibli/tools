@@ -1,0 +1,71 @@
+#!/bin/bash
+
+die() {
+  echo "$@"
+  exit 1
+}
+
+has_word() {
+  keyword="$1"
+  shift
+  grep -qw -- "$keyword" <(echo "$@")
+}
+
+glob_exists() {
+  compgen -G "$1" &>/dev/null
+}
+
+if has_word "-h" "$@"; then
+  cat <<EOL
+Usage: $0 [debug|release]
+
+Try to detect build method and automatically build the files.
+Currently only supports Qt .pro and CMakeList.txt with make
+
+Options:
+  debug       If provided, will force debug build type.
+  release     If provided, will force release build type.
+EOL
+  exit 1
+fi
+
+if ! echo "$PATH" | grep -q ccache; then
+  ccache_path=/usr/lib/ccache
+  [ -d "$ccache_path/bin" ] &&
+    ccache_path=/usr/lib/ccache/bin
+      PATH="$ccache_path:$PATH"
+fi
+
+build_dir=".build"
+source_dir="$(realpath --relative-to "$build_dir" ".")"
+
+if [ -f CMakeLists.txt ]; then
+  PREBUILD_DEBUG_FLAG="-DCMAKE_BUILD_TYPE=Debug"
+  PREBUILD_RELEASE_FLAG="-DCMAKE_BUILD_TYPE=Release"
+  PREBUILD_COMMAND=( "cmake" "$source_dir" )
+  BUILD_COMMAND="make"
+elif glob_exists "*.pro"; then
+  PREBUILD_DEBUG_FLAG="CONFIG+=debug"
+  PREBUILD_RELEASE_FLAG="CONFIG+=release"
+  PREBUILD_COMMAND=("qmake" "$source_dir")
+  BUILD_COMMAND="make"
+fi
+
+if has_word "debug" "$@" && has_word "release" "$@"; then
+  die "Only one build type allowed, but multiple provided"
+fi
+
+if has_word "debug" "$@"; then
+  PREBUILD_COMMAND+=("$PREBUILD_DEBUG_FLAG")
+elif has_word "release" "$@"; then
+  PREBUILD_COMMAND+=("$PREBUILD_RELEASE_FLAG")
+fi
+
+mkdir -p "$build_dir"
+(
+  if ! cd "$build_dir"; then
+    die "Failed to enter build directory."
+  fi
+  "${PREBUILD_COMMAND[@]}"
+  $BUILD_COMMAND
+)
