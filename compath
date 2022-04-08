@@ -22,17 +22,31 @@ shorten_word() {
 }
 
 compress_path() {
+  local path path_element path_elements first_element last_element length
   while read -r path; do
     # shellcheck disable=2162 # in this case -r will cause havoc
     IFS=/ read -a path_elements <<<"$path"
-    for path_element in "${path_elements[@]}"; do
+    length="${#path_elements[*]}"
+    first_element="${path_elements[0]}"
+    last_element="${path_elements[$((length - 1))]}"
+
+    # skip / if in home
+    if ! [ "$first_element" = "~" ]; then
+      printf "/"
+    fi
+
+    # shorten each part
+    for index in $(seq 0 $((length - 2))); do
+      path_element="${path_elements[$index]}"
       if [ -n "$path_element" ]; then
-        if ! [ "$path_element" = "~" ]; then
-          printf "/"
-        fi
-        printf "%s" "$(shorten_word "$path_element")"
+        printf "%s/" "$(shorten_word "$path_element")"
       fi
     done
+
+    # last element gets special treatment
+    if [ -n "$last_element" ]; then
+      printf "%s" "$(allow_len="$last_allow_len" trim_len="$last_allow_len" shorten_word "$last_element")"
+    fi
     printf "\n"
   done
 }
@@ -43,6 +57,7 @@ expand_path() {
     IFS=/ read -a path_elements <<<"$path"
     path=
     for path_element in "${path_elements[@]}"; do
+
       # expand tilda or append path elements
       if [ -z "$path_element" ]; then
         continue
@@ -65,7 +80,9 @@ expand_path() {
 }
 
 trim_len=3
+last_allow_len=100
 calc_allow_len=true
+calc_allow_len_val=2
 expand=false
 
 print_help() {
@@ -79,21 +96,25 @@ and it can also expand these paths if they exist.
 If no path is provided, the application will attempt to capture standard input.
 
 Options:
-  -t    Set trim length, the path elements will be trimmed to.
   -a    Set allow length, which is the max length before path element
-        is trimmed.
-  -x    Expand path (reverse of default compression)
+        is trimmed (default:<trim-length>+$calc_allow_len_val).
   -h    Show this help
+  -l    Allowed length for last path element (default:$last_allow_len).
+  -t    Set trim length, the path elements will be trimmed to (default:$trim_len).
+  -x    Expand path (reverse of default compression)
 
 Examples:
 
     $ $0 /home/user/repositories/tools/compath
-    ~/rep/tools/com
+    ~/rep/tools/compath
 
     $ $0 -t 2 /home/user/repositories/tools/compath
-    ~/re/to/co
+    ~/re/to/compath
 
     $ $0 -t 2 -a 5 /home/user/repositories/tools/compath
+    ~/re/tools/co
+
+    $ $0 -t 2 -a 5 -l 2 /home/user/repositories/tools/compath
     ~/re/tools/co
 
     $ $0 -x ~/rep/tools/com
@@ -101,13 +122,14 @@ Examples:
 EOL
 }
 
-while getopts "t:a:x?h?" opt; do
+while getopts "a:h?l:x?t:" opt; do
   case $opt in
-    t) trim_len="$OPTARG" ;;
     a) calc_allow_len=false
        allow_len="$OPTARG" ;;
-    x) expand=true ;;
     h) print_help ;;
+    l) last_allow_len="$OPTARG" ;;
+    t) trim_len="$OPTARG" ;;
+    x) expand=true ;;
     ?) continue ;;
   esac
 done
@@ -117,7 +139,7 @@ if [ $OPTIND -ge 0 ]; then
 fi
 
 if $calc_allow_len; then
-  allow_len=$((trim_len + 2))
+  allow_len=$((trim_len + calc_allow_len_val))
 fi
 
 if [ -n "$1" ]; then
@@ -128,5 +150,5 @@ fi |
   if $expand; then
     expand_path
   else
-    replace_home_with_tilda | compress_path
+    replace_home_with_tilda | compress_path | sed 's|/.$||'
   fi

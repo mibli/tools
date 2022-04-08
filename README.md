@@ -30,7 +30,7 @@ Example usage:
 
 Possible future features:
 
-* full name of last element
+* removal of existence requirement for shortening (would need to implement a few tweaks)
 * vowel removal
 * preserving the trailing 's' (indicating multiple)
 * tests
