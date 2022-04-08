@@ -1,0 +1,61 @@
+#!/bin/bash
+
+find_lib_providing()  {
+    symbol="$1"
+    shift
+    scanelf -s "$symbol" "$@" |
+        grep "$symbol" |
+        while read -r _ _ file; do
+            nm -Cu "$file" |
+            grep -q "$symbol" ||
+            echo "$file";
+        done
+}
+
+get_missing_symbols() {
+    file="$1"
+    nm -Cu "$file" | sed -e 's/.* \([^ ]\+\)$/\1/' -e '/GLIBC/d'
+}
+
+print_help() {
+    echo "Usage: $0 <file> <libs_directories...>"
+    echo "This is a tool to help to determine dependencies of a library"
+}
+
+set -e
+which nm >/dev/null
+which scanelf >/dev/null
+
+if [ "$1" = "-h" ]; then
+    print_help
+    exit 0
+fi
+
+if [ $# -lt 2 ]; then
+    echo "Please provide file and a lib directory"
+    print_help
+    exit 1
+fi
+
+if [ ! -f "$1" ]; then
+    echo "$1 is not a file"
+    print_help
+    exit 1
+fi
+file="$1"
+shift
+
+libs=( )
+while [ -n "$1" ]; do
+    if [ ! -d "$1" ]; then
+        echo "$1 is not a directory"
+        print_help
+        exit 1
+    fi
+    libs+=("$1")
+    shift
+done
+
+for symbol in $(get_missing_symbols "$file"); do
+    echo "$(find_lib_providing "$symbol" "${libs[@]}")" "$symbol"
+done | sort

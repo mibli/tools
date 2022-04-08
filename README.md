@@ -2,7 +2,7 @@
 
 For usage help run
 
-    TOOL -h
+    toolname -h
 
 ## Mailcheck
 
@@ -14,3 +14,13 @@ The purpose of this script is to use it on one of the small window managers
 taskbars, such as polybar or i3blocks, with combination of offlineimap.
 
 The script caches the new message list in `$XDG_CONFIG_HOME/mailcheck`
+
+## FindLibs
+
+The purpose of this script is to automate finding dependencies of libraries, that are incorrectly
+linked and thus You can't be sure which symbols they include. It will scan ELF symbols and look for
+the symbol in each library under given paths. Honestly though... Just link the libraries properly.
+
+Example usage:
+
+    findlibs badlib.so badlibs/ /usr/lib/ /usr/lib/Qt5/
