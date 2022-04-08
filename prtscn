@@ -1,0 +1,19 @@
+#!/bin/bash
+
+output_dir="$HOME/Pictures/screenshots"
+output="$output_dir/$(date +'%Y-%m-%d-%H%M%S').png"
+color=1,1,1,0.1
+source=''
+
+mkdir -p "$output_dir"
+while getopts rcw opt; do
+    case $opt in
+        r) ;;
+        w) source="-i $(xdotool getactivewindow)" ;;
+        c) source="-s -c $color";;
+        \?) echo "Invalid option: -$OPTARG"; exit ;;
+    esac
+done
+
+maim "$source" "$output" &&
+notify-send "Screenshot was saved to $output"

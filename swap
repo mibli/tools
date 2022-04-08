@@ -1,0 +1,38 @@
+#!/bin/bash
+
+err() {
+    echo "$@" >&2
+}
+
+die() {
+    err "$@"
+    exit 1
+}
+
+usage() {
+    die "Usage: $0 path1 path2"
+}
+
+[ $# -eq 2 ] || {
+    err "exactly 2 arguments are required"
+    usage
+}
+
+[ -e "$1" ] || {
+    err "\"$1\" does not exist"
+    usage
+}
+
+[ -e "$2" ] || {
+    err "\"$2\" does not exist"
+    usage
+}
+
+set -e
+tempdir=$(mktemp -d /tmp/swap-XXXXX)
+temploc="$tempdir/$(basename "$1")"
+mv "$1" "$temploc"
+mv "$2" "$1"
+mv "$temploc" "$2"
+rm -rf "$tempdir"
+unset tempdir temploc

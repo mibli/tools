@@ -1,0 +1,19 @@
+#!/bin/bash
+
+output_dir="$HOME/Video/capture"
+output="$output_dir"/`date +'%Y-%m-%d-%H%M%S'`.webm
+color=1,1,1,0.1
+source=''
+
+mkdir -p "$output_dir"
+while [ -n "$1" ]; do
+    case $1 in
+        -r) shift;;
+        -w) source="-w"; shift ;;
+        -c) source="-s"; shift ;;
+        *) echo "Invalid option: $1"; echo "Usage: $0 [-r|-w|-c]"; exit ;;
+    esac
+done
+
+ffcast $source ffmpeg -video_size '%s' -y -framerate 25 -f x11grab -i ':0.0+%c' "$output" &&
+    notify-send "Capture was saved to $output"

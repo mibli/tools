@@ -64,3 +64,30 @@ The purpose of this script is to use it on one of the small window managers
 taskbars, such as polybar or i3blocks, with combination of offlineimap.
 
 The script caches the new message list in `$XDG_CONFIG_HOME/mailcheck`
+
+### Print Screen (prtscn)
+
+Wrapper around several methods of taking screenshots. Mostly for tiled window manager use.
+
+Example usage:
+
+    prtscn -r  # take root screenshot
+    prtscn -w  # take window screenshot
+    prtscn -c  # take selection screenshot
+
+### Record Screen (recscn)
+
+Similar interface as `prtscn` for recording using ffmpeg. Nowadays I prefer obs. Also it's hard to
+kill if You don't run it in terminal window.
+
+Example usage:
+
+    recscn -r  # record root
+    recscn -w  # record window - careful! It doesn't follow window
+    recscn -c  # record selection
+
+### Worthy mentions
+
+* datestamp - Produces a simple date stamp in predefined format.
+* swap - swap two files with use of mktemp
+* timestamp - Produces a simple time stamp in predefined format.
