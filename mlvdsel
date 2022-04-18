@@ -1,0 +1,126 @@
+#!/bin/bash
+
+die() {
+  echo "$@" && exit 1
+}
+
+get_list_of_configs() {
+  sudo ls /etc/wireguard | sed -e '/mullvad-[a-z]\+[0-9]\+.conf/!d'
+}
+
+get_list_of_servers() {
+  get_list_of_configs | sed -e 's/^.*-\([a-z]\+[0-9]\+\).*$/\1/'
+}
+
+get_list_of_countries() {
+  get_list_of_servers | grep -oe '[a-z]\+' | sort -u
+}
+
+get_list_of_country_servers() {
+  local country
+  country="$1"
+  get_list_of_servers | grep "$country" | grep -oe '[0-9]\+' | sort -V
+}
+
+ask_one_of() {
+  local message input
+  message="$1"
+  shift
+  echo "$message" >&2
+  while read -r input; do
+    if [ -n "$input" ] && grep -wq "$input" <<< "$@"; then
+      echo "$input"
+      break
+    else
+      echo "$message" >&2
+    fi
+  done
+}
+
+# OPTION PARSING
+# --------------
+
+print_help() {
+  cat <<EOF
+Usage: $0 [[-c COUNTRY_CODE] [-s SERVER_NR]|-r|-h]
+
+Options:
+  -c    specify country
+  -s    specify server
+  -r    random country and server
+  -h    show this message
+EOF
+}
+
+country=''
+server=''
+
+while getopts "c:s:r?h?" opt; do
+  case $opt in
+    c) country="$OPTARG" ;;
+    s) server="$OPTARG" ;;
+    r) country='*'
+       server='*' ;;
+    *) print_help;
+       exit 0 ;;
+  esac
+done
+
+sudo -v || die "Need sudo rights to read wireguard configs and toggle daemons"
+
+# ESTABLISHING COUNTRY AND SERVER
+# -------------------------------
+
+readarray countries < <(get_list_of_countries)
+
+if [ "${#countries[@]}" -lt 1 ]; then
+  die "No available mullvad configs found under /etc/wireguard"
+fi
+
+if [ -z "$country" ]; then
+  echo "${countries[@]}" | xargs printf "%.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s\n"
+  country="$(ask_one_of 'Please select available country (* for random):' "${countries[@]}" '*')"
+fi
+
+if [ "$country" = '*' ]; then
+  size="${#countries[@]}"
+  index="$((RANDOM % size))"
+  country=${countries[$index]//[$'\t\r\n']}
+fi
+
+readarray servers < <(get_list_of_country_servers "$country")
+
+if [ "${#countries[@]}" -lt 1 ]; then
+  die "No available mullvad configs found for country ($country)"
+elif [ "${#servers[@]}" -eq 1 ]; then
+  server="${servers[0]//[$'\t\r\n']}"
+fi
+
+if [ -z "$server" ]; then
+  echo "${servers[@]}" | xargs printf "%.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s %.3s\n"
+  server="$(ask_one_of 'Please select available server (* for random):' "${servers[@]}" '*')"
+fi
+
+if [ "$server" = '*' ]; then
+  size="${#servers[@]}"
+  index="$((RANDOM % size))"
+  server=${servers[$index]//[$'\t\r\n']}
+fi
+
+new_server="${country}${server}"
+if ! grep -qe '^[a-z]\+[0-9]\+$' <<<"$new_server"; then
+  die "Invalid server name ($new_server)"
+fi
+
+echo "Selected server $new_server!"
+
+# TOGGLING SERVICES
+# -----------------
+
+active_server="$(sudo systemctl list-units -o json | jq -r '.[] | .unit' | grep wg- | sed -e 's/.*@mullvad-\([^\.]\+\).service/\1/')"
+if [ -n "$active_server" ]; then
+  echo "Disabling and stopping active server ($active_server)"
+  sudo systemctl disable --now "wg-quick@mullvad-$active_server" 2>&1 | sed 's/^/\t/'
+fi
+echo "Enabling and starting selected server ($new_server)"
+sudo systemctl enable --now "wg-quick@mullvad-$new_server" 2>&1 | sed 's/^/\t/'
