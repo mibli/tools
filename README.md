@@ -1,5 +1,20 @@
 # Asorted list of tools I use
 
+## Index
+
+* [abuild (Auto Build)](#auto-build-abuild)
+* [compath (Compress Path)](#compress-path-compath)
+* [datestamp](#worthy-mentions)
+* [findlibs](#findlibs)
+* [idlex (Idle Executor)](#idle-executor-idlex)
+* [mailcheck](#mailcheck)
+* [mlvdsel (Mullvad Selector)](#mullvad-selector-mlvdsel)
+* [prtscn](#print-screen-prtscn)
+* [recscn](#record-screen-recscn)
+* [swap](#worthy-mentions)
+* [thumbnailer](#thumbnailer)
+* [timestamp](#worthy-mentions)
+
 ## General usage
 
 For usage help run
@@ -65,7 +80,7 @@ taskbars, such as polybar or i3blocks, with combination of offlineimap.
 
 The script caches the new message list in `$XDG_CONFIG_HOME/mailcheck`
 
-### Mullvad selector
+### Mullvad Selector (mlvdsel)
 
 Helps with selecting enabling and disabling WireGuard Mullvad configurations. Requires sudo to work,
 so read the source to be sure.
