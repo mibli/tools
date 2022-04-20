@@ -1,7 +1,10 @@
 #!/bin/bash
+for binary in ffcast ffmpeg notify-send; do
+  which "$binary" &>/dev/null || die "Required '$binary' is not available."
+done
 
 output_dir="$HOME/Video/capture"
-output="$output_dir"/`date +'%Y-%m-%d-%H%M%S'`.webm
+output="$output_dir"/$(date +'%Y-%m-%d-%H%M%S').webm
 color=1,1,1,0.1
 source=''
 

@@ -37,6 +37,12 @@ ask_one_of() {
   done
 }
 
+# CHECK REQUIREMENTS
+# ------------------
+for binary in wg-quick systemctl sudo; do
+  which "$binary" &>/dev/null || die "Required '$binary' is not available."
+done
+
 # OPTION PARSING
 # --------------
 
