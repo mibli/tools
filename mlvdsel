@@ -22,6 +22,10 @@ get_list_of_country_servers() {
   get_list_of_servers | grep "$country" | grep -oe '[0-9]\+' | sort -V
 }
 
+get_list_of_active_servers() {
+  sudo systemctl list-units -o json | jq -r '.[] | .unit' | grep wg- | sed -e 's/.*@mullvad-\([^\.]\+\).service/\1/'
+}
+
 ask_one_of() {
   local message input
   message="$1"
@@ -123,10 +127,12 @@ echo "Selected server $new_server!"
 # TOGGLING SERVICES
 # -----------------
 
-active_server="$(sudo systemctl list-units -o json | jq -r '.[] | .unit' | grep wg- | sed -e 's/.*@mullvad-\([^\.]\+\).service/\1/')"
-if [ -n "$active_server" ]; then
-  echo "Disabling and stopping active server ($active_server)"
-  sudo systemctl disable --now "wg-quick@mullvad-$active_server" 2>&1 | sed 's/^/\t/'
+readarray -t active_servers < <(get_list_of_active_servers)
+if [ ${#active_servers[@]} -gt 0 ]; then
+  for active_server in "${active_servers[@]}"; do
+    echo "Disabling and stopping active server ($active_server)"
+    sudo systemctl disable --now "wg-quick@mullvad-$active_server" 2>&1 | sed 's/^/\t/'
+  done
 fi
 echo "Enabling and starting selected server ($new_server)"
 sudo systemctl enable --now "wg-quick@mullvad-$new_server" 2>&1 | sed 's/^/\t/'
