@@ -1,7 +1,10 @@
 #!/bin/bash
 
+service_prefix='wg-quick@mullvad-'
+
 die() {
-  echo "$@" && exit 1
+  ${rc:1}
+  echo "$@" && exit $rc
 }
 
 get_list_of_configs() {
@@ -23,7 +26,7 @@ get_list_of_country_servers() {
 }
 
 get_list_of_active_servers() {
-  sudo systemctl list-units -o json | jq -r '.[] | .unit' | grep wg- | sed -e 's/.*@mullvad-\([^\.]\+\).service/\1/'
+  sudo systemctl list-units -a -o json "$service_prefix*.service" | jq -r '.[] | .unit' | sed -e 's/.*@mullvad-\([^\.]\+\).service/\1/'
 }
 
 ask_one_of() {
@@ -55,22 +58,30 @@ print_help() {
 Usage: $0 [[-c COUNTRY_CODE] [-s SERVER_NR]|-r|-h]
 
 Options:
-  -c    specify country
-  -s    specify server
+  -c    specify country (* for random)
+  -s    specify server (* for random)
   -r    random country and server
+  -l    list active server
+  -e    start active server
+  -d    stop active server
   -h    show this message
 EOF
 }
 
 country=''
 server=''
+list_active=false
+change_state=''
 
-while getopts "c:s:r?h?" opt; do
+while getopts "c:s:r?l?e?d??h" opt; do
   case $opt in
     c) country="$OPTARG" ;;
     s) server="$OPTARG" ;;
     r) country='*'
        server='*' ;;
+    l) list_active=true ;;
+    e) change_state=start ;;
+    d) change_state=stop ;;
     *) print_help;
        exit 0 ;;
   esac
@@ -80,6 +91,22 @@ sudo -v || die "Need sudo rights to read wireguard configs and toggle daemons"
 
 # ESTABLISHING COUNTRY AND SERVER
 # -------------------------------
+readarray -t active_servers < <(get_list_of_active_servers)
+
+if $list_active; then
+  for server in "${active_servers[@]}"; do
+    echo -n "$server "
+    sudo systemctl is-active "$service_prefix$server"
+  done
+  exit 0
+fi
+
+if [ -n "$change_state" ]; then
+  for server in "${active_servers[@]}"; do
+    sudo systemctl "$change_state" "$service_prefix$server"
+  done
+  exit 0
+fi
 
 readarray countries < <(get_list_of_countries)
 
@@ -131,8 +158,8 @@ readarray -t active_servers < <(get_list_of_active_servers)
 if [ ${#active_servers[@]} -gt 0 ]; then
   for active_server in "${active_servers[@]}"; do
     echo "Disabling and stopping active server ($active_server)"
-    sudo systemctl disable --now "wg-quick@mullvad-$active_server" 2>&1 | sed 's/^/\t/'
+    sudo systemctl disable --now "$service_prefix$active_server" 2>&1 | sed 's/^/\t/'
   done
 fi
 echo "Enabling and starting selected server ($new_server)"
-sudo systemctl enable --now "wg-quick@mullvad-$new_server" 2>&1 | sed 's/^/\t/'
+sudo systemctl enable --now "$service_prefix$new_server" 2>&1 | sed 's/^/\t/'
